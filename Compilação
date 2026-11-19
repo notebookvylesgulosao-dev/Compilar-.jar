@@ -1,0 +1,43 @@
+
+name: Compilar WandryHP
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Preparar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Baixar projeto
+        run: |
+          pip install gdown
+          gdown --id 1OjiC3Wqq_u_L1cZ5ViNhsmmSxig5glGl -O wandry.zip
+          mkdir projeto
+          unzip wandry.zip -d projeto
+
+      - name: Configurar Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+
+      - name: Compilar
+        run: |
+          cd projeto
+          BUILD=$(find . -name build.gradle -print -quit)
+          cd "$(dirname "$BUILD")"
+          gradle build
+
+      - name: Disponibilizar JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: WandryHP-JAR
+          path: projeto/**/build/libs/*.jar
