@@ -1,43 +1,42 @@
 
-name: Compilar WandryHP
+name: Enviar arquivos do WandryHP
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
+
+permissions:
+  contents: write
 
 jobs:
-  build:
+  enviar:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Preparar Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
+      - name: Acessar repositório
+        uses: actions/checkout@v4
 
-      - name: Baixar projeto
+      - name: Baixar ZIP do Drive
         run: |
           pip install gdown
-          gdown --id 1OjiC3Wqq_u_L1cZ5ViNhsmmSxig5glGl -O wandry.zip
-          mkdir projeto
-          unzip wandry.zip -d projeto
+          gdown "https://drive.google.com/uc?id=1OjiC3Wqq_u_L1cZ5ViNhsmmSxig5glGl" -O wandry.zip
 
-      - name: Configurar Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.10.2'
-
-      - name: Compilar
+      - name: Extrair arquivos
         run: |
-          cd projeto
-          BUILD=$(find . -name build.gradle -print -quit)
-          cd "$(dirname "$BUILD")"
-          gradle build
+          mkdir projeto
+          unzip -q wandry.zip -d projeto
+          PROJECT_DIR="$(dirname "$(find projeto -name build.gradle -print -quit)")"
+          if [ -z "$PROJECT_DIR" ] || [ "$PROJECT_DIR" = "projeto" ]; then
+            PROJECT_DIR="projeto"
+          fi
+          rsync -a --exclude='.git' --exclude='.github' "$PROJECT_DIR"/ ./
 
-      - name: Disponibilizar JAR
-        uses: actions/upload-artifact@v4
-        with:
-          name: WandryHP-JAR
-          path: projeto/**/build/libs/*.jar
+      - name: Enviar arquivos ao GitHub
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m "Adicionar arquivos do WandryHP"
+            git push
+          fi
+concurrency:
